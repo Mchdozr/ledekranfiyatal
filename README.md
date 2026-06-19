@@ -1,36 +1,90 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ledekranfiyatal.com
 
-## Getting Started
+Türkiye odaklı, LED ekran satın almak isteyenler için **fiyat karşılaştırma ve teklif toplama platformu**. Kullanıcı ihtiyacını tek formda bildirir; platform birden fazla tedarikçiden teklif toplar, karşılaştırır ve en uygun fiyatlı çözümü sunar.
 
-First, run the development server:
+Marka: **mLed** · Domain: **ledekranfiyatal.com**
+
+## Teknoloji
+
+- **Next.js 16** (App Router, Turbopack) + **TypeScript**
+- **Tailwind CSS v4** (CSS-first `@theme` design tokens)
+- **Framer Motion** (scroll reveal, sayaçlar, geçişler, `prefers-reduced-motion` desteği)
+- **React Hook Form + Zod** (multi-step fiyat formu doğrulama)
+- **lucide-react** ikonlar
+- SEO: `next/metadata`, dinamik `sitemap.ts`, `robots.ts`, JSON-LD (Organization, WebSite+SearchAction, Service, FAQPage, BreadcrumbList, Article)
+- Vercel uyumlu yapı
+
+## Kurulum
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+cp .env.example .env.local   # değerleri doldurun (opsiyonel)
+npm run dev                  # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Komutlar
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Komut | Açıklama |
+|------|----------|
+| `npm run dev` | Geliştirme sunucusu |
+| `npm run build` | Production build |
+| `npm run start` | Production sunucusu |
+| `npm run lint` | ESLint |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Ortam Değişkenleri
 
-## Learn More
+Bkz. `.env.example`. Tamamı opsiyoneldir; tanımlanmazsa analytics yüklenmez, form bildirimi sadece sunucu log'una yazılır.
 
-To learn more about Next.js, take a look at the following resources:
+- `NEXT_PUBLIC_SITE_URL` — Canonical/sitemap için site adresi
+- `NEXT_PUBLIC_GTM_ID` / `NEXT_PUBLIC_GA_ID` — Google Tag Manager / GA4
+- `QUOTE_WEBHOOK_URL` — Form gönderimlerinin iletileceği webhook
+- `RESEND_API_KEY` / `QUOTE_NOTIFY_EMAIL` — E-posta entegrasyonu (placeholder)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Proje Yapısı
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```
+src/
+  app/
+    page.tsx                     # Ana sayfa
+    fiyat-al/                    # Multi-step teklif formu
+    nasil-calisir/
+    urunler/ + [slug]/           # Ürün hub + 6 kategori
+    kullanim-alanlari/ + [slug]/ # Sektör hub + dinamik
+    fiyat-rehberi/ pixel-pitch-rehberi/
+    blog/ + [slug]/              # Blog + 5 makale
+    projeler/ hakkimizda/ sss/ iletisim/
+    gizlilik-politikasi/ kvkk-aydinlatma-metni/
+    cerez-politikasi/ kullanim-kosullari/
+    api/quote/route.ts           # Form API
+    sitemap.ts robots.ts manifest.ts not-found.tsx icon.svg
+  components/                    # Header, Footer, Hero, kartlar, slider, form vb.
+  lib/                           # site, products, usecases, projects, blog, content, seo, schema
+public/images/                  # Optimize görseller (next/image)
+```
 
-## Deploy on Vercel
+## Fiyat Al Formu
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+`/fiyat-al` — 4 adımlı wizard (Kullanım → Boyut → Proje → İletişim) + teşekkür ekranı.
+Zod ile adım bazlı doğrulama, KVKK onayı zorunlu. Gönderim `POST /api/quote`'a gider;
+`dataLayer.push({ event: "quote_submit" })` ile dönüşüm event'i tetiklenir.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+> Üretimde `src/app/api/quote/route.ts` içine e-posta (Resend/Nodemailer) ve
+> veritabanı (Supabase) entegrasyonu eklenebilir; placeholder hazırdır.
+
+## SEO
+
+- Her sayfada unique title/description, canonical, OG/Twitter
+- JSON-LD şemaları otomatik enjekte edilir
+- `sitemap.xml` ve `robots.txt` dinamik üretilir
+- `tr-TR` dil, mobile-first responsive, font `display: swap`, `next/image` (AVIF/WebP)
+
+## Deploy (Vercel)
+
+1. Repoyu Vercel'e bağlayın
+2. Environment Variables: `NEXT_PUBLIC_SITE_URL` ve (opsiyonel) analytics/webhook
+3. Otomatik build & deploy
+
+## Notlar
+
+- "Fiyat garantisi değil, en uygun teklif karşılaştırması" ilkesi tüm yasal metinlere yansıtılmıştır.
+- Tüm metinler Türkçe ve LED ekran sektörüne uygun gerçek içeriktir.
