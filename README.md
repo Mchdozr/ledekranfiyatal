@@ -33,12 +33,15 @@ npm run dev                  # http://localhost:3000
 
 ## Ortam Değişkenleri
 
-Bkz. `.env.example`. Tamamı opsiyoneldir; tanımlanmazsa analytics yüklenmez, form bildirimi sadece sunucu log'una yazılır.
+Bkz. `.env.example` ve `docs/ROADMAP.md`.
 
-- `NEXT_PUBLIC_SITE_URL` — Canonical/sitemap için site adresi
-- `NEXT_PUBLIC_GTM_ID` / `NEXT_PUBLIC_GA_ID` — Google Tag Manager / GA4
-- `QUOTE_WEBHOOK_URL` — Form gönderimlerinin iletileceği webhook
-- `RESEND_API_KEY` / `QUOTE_NOTIFY_EMAIL` — E-posta entegrasyonu (placeholder)
+**Zorunlu (admin + veritabanı):** `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `ADMIN_PASSWORD`, `ADMIN_SESSION_SECRET`
+
+**Çağrı modu:** `CALL_MODE=mock` | `web` | `phone` — bkz. `docs/ROADMAP.md`
+
+**Retell (web/phone):** `RETELL_API_KEY`, `RETELL_AGENT_ID`, `RETELL_FROM_NUMBER` (phone)
+
+**Opsiyonel:** analytics, webhook, e-posta — `.env.example`
 
 ## Proje Yapısı
 
@@ -55,21 +58,22 @@ src/
     projeler/ hakkimizda/ sss/ iletisim/
     gizlilik-politikasi/ kvkk-aydinlatma-metni/
     cerez-politikasi/ kullanim-kosullari/
-    api/quote/route.ts           # Form API
-    sitemap.ts robots.ts manifest.ts not-found.tsx icon.svg
-  components/                    # Header, Footer, Hero, kartlar, slider, form vb.
-  lib/                           # site, products, usecases, projects, blog, content, seo, schema
-public/images/                  # Optimize görseller (next/image)
+    api/quote/route.ts           # Form API → Supabase
+    api/retell/webhook/          # Retell callback
+    admin/                       # Admin paneli + test
+  lib/                           # site, calls, supabase, call-mode
+docs/ROADMAP.md                  # Sonraki adımlar planı
+docs/retell-agent.md             # Retell agent kurulumu
+supabase/migrations/             # DB şema
 ```
 
 ## Fiyat Al Formu
 
 `/fiyat-al` — 4 adımlı wizard (Kullanım → Boyut → Proje → İletişim) + teşekkür ekranı.
-Zod ile adım bazlı doğrulama, KVKK onayı zorunlu. Gönderim `POST /api/quote`'a gider;
-`dataLayer.push({ event: "quote_submit" })` ile dönüşüm event'i tetiklenir.
+Zod ile adım bazlı doğrulama, KVKK onayı zorunlu. Gönderim `POST /api/quote` → Supabase.
+`CALL_MODE=phone` iken eşleşen tedarikçilere otomatik Retell araması başlar; `mock`/`web` için `/admin/test` kullanın.
 
-> Üretimde `src/app/api/quote/route.ts` içine e-posta (Resend/Nodemailer) ve
-> veritabanı (Supabase) entegrasyonu eklenebilir; placeholder hazırdır.
+> Yol haritası: `docs/ROADMAP.md`
 
 ## SEO
 
