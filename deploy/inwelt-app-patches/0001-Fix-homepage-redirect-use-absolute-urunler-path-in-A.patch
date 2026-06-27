@@ -1,0 +1,50 @@
+From 655516a8c353cba4c8663369a8a10da3597ffccf Mon Sep 17 00:00:00 2001
+From: Cursor Agent <cursoragent@cursor.com>
+Date: Sat, 27 Jun 2026 23:01:16 +0000
+Subject: [PATCH 1/2] Fix homepage redirect: use absolute /urunler path in
+ Apache rule
+
+---
+ public/.htaccess |  2 +-
+ routes/web.php   | 12 ++++++++++++
+ 2 files changed, 13 insertions(+), 1 deletion(-)
+
+diff --git a/public/.htaccess b/public/.htaccess
+index 8b5878b..c890531 100644
+--- a/public/.htaccess
++++ b/public/.htaccess
+@@ -6,7 +6,7 @@
+     RewriteEngine On
+ 
+     # Site girişi ürünler sayfasına (Apache seviyesi — route cache'den bağımsız)
+-    RewriteRule ^$ urunler [L,R=301]
++    RewriteRule ^$ /urunler [L,R=301]
+ 
+     # Handle Authorization Header
+     RewriteCond %{HTTP:Authorization} .
+diff --git a/routes/web.php b/routes/web.php
+index 393005c..039b3ad 100644
+--- a/routes/web.php
++++ b/routes/web.php
+@@ -8,6 +8,18 @@
+ use App\Http\Controllers\SearchController;
+ use Illuminate\Support\Facades\Route;
+ 
++// Eski Apache göreli yönlendirme hatası (Google'da indekslenmiş kırık URL)
++Route::redirect(
++    '/var/www/vhosts/inwelt.com.tr/httpdocs/public/urunler',
++    '/urunler',
++    301
++);
++Route::redirect(
++    '/var/www/vhosts/inwelt.com.tr/httpdocs/public',
++    '/urunler',
++    301
++);
++
+ Route::redirect('/', '/urunler', 301);
+ Route::get('/anasayfa', [HomeController::class, 'index'])->name('home');
+ Route::get('/sitemap.xml', [HomeController::class, 'sitemap'])->name('sitemap');
+-- 
+2.43.0
+
