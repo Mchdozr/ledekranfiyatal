@@ -8,8 +8,7 @@ export function getSupabase(): SupabaseClient {
   if (cached) return cached;
 
   const url = process.env.SUPABASE_URL?.replace(/\/$/, "");
-  const serviceKey =
-    process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SECRET_KEY;
+  const serviceKey = getSupabaseServiceKey();
 
   if (!url || !serviceKey) {
     throw new Error(
@@ -28,6 +27,25 @@ export function isSupabaseConfigured(): boolean {
     process.env.SUPABASE_URL &&
       (process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SECRET_KEY),
   );
+}
+
+/** Vercel teşhisi — key değerini açmadan türünü döner. */
+export function describeSupabaseKeyKind(): string {
+  const raw =
+    process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SECRET_KEY ?? "";
+  const key = raw.trim();
+
+  if (!key) return "missing";
+  if (key.startsWith("sb_secret_")) return "secret (ok)";
+  if (key.startsWith("sb_publishable_")) return "publishable (yanlis — secret gerekli)";
+  if (key.startsWith("eyJ")) return "legacy-jwt (service_role olmali, anon degil)";
+  return "unknown-format";
+}
+
+export function getSupabaseServiceKey(): string | undefined {
+  const key =
+    process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SECRET_KEY;
+  return key?.trim() || undefined;
 }
 
 export async function getCallSettings(): Promise<CallSettings> {

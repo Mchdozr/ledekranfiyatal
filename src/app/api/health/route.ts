@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSupabase, isSupabaseConfigured } from "@/lib/supabase";
+import { describeSupabaseKeyKind, getSupabase, isSupabaseConfigured } from "@/lib/supabase";
 
 export const runtime = "nodejs";
 
@@ -7,11 +7,22 @@ export async function GET() {
   const configured = isSupabaseConfigured();
   const url = process.env.SUPABASE_URL?.replace(/\/$/, "") ?? null;
 
+  const keyKind = describeSupabaseKeyKind();
+
   if (!configured) {
     return NextResponse.json({
       ok: false,
-      supabase: { configured: false, connected: false },
+      supabase: { configured: false, connected: false, keyKind },
       hint: "SUPABASE_URL ve SUPABASE_SERVICE_ROLE_KEY Vercel env'e ekleyin.",
+    });
+  }
+
+  if (keyKind === "publishable (yanlis — secret gerekli)") {
+    return NextResponse.json({
+      ok: false,
+      supabase: { configured: true, connected: false, keyKind },
+      urlHost: url ? new URL(url).hostname : null,
+      hint: "Yanlis key: publishable/anon. Secret veya service_role kullanin.",
     });
   }
 
@@ -26,6 +37,7 @@ export async function GET() {
           configured: true,
           connected: false,
           code: error.code,
+          keyKind,
           hint: mapError(error),
         },
         urlHost: url ? new URL(url).hostname : null,
@@ -34,14 +46,14 @@ export async function GET() {
 
     return NextResponse.json({
       ok: true,
-      supabase: { configured: true, connected: true },
+      supabase: { configured: true, connected: true, keyKind },
       urlHost: url ? new URL(url).hostname : null,
       callMode: process.env.CALL_MODE ?? "auto",
     });
   } catch {
     return NextResponse.json({
       ok: false,
-      supabase: { configured: true, connected: false },
+      supabase: { configured: true, connected: false, keyKind },
       hint: "Supabase bağlantısı kurulamadı.",
     });
   }
