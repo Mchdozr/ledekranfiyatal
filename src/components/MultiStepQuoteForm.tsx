@@ -97,7 +97,12 @@ export function MultiStepQuoteForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-      if (!res.ok) throw new Error("fail");
+      const json = (await res.json().catch(() => null)) as
+        | { ok?: boolean; error?: string }
+        | null;
+      if (!res.ok || !json?.ok) {
+        throw new Error(json?.error ?? "fail");
+      }
       if (typeof window !== "undefined") {
         (window as unknown as { dataLayer?: unknown[] }).dataLayer?.push({
           event: "quote_submit",
@@ -107,9 +112,11 @@ export function MultiStepQuoteForm() {
         });
       }
       setDone(true);
-    } catch {
+    } catch (err) {
+      const detail = err instanceof Error && err.message !== "fail" ? err.message : "";
       setServerError(
-        "Talebiniz gönderilemedi. Lütfen tekrar deneyin veya telefonla ulaşın.",
+        detail ||
+          "Talebiniz gönderilemedi. Lütfen tekrar deneyin veya telefonla ulaşın.",
       );
     }
   };

@@ -7,8 +7,9 @@ let cached: SupabaseClient | null = null;
 export function getSupabase(): SupabaseClient {
   if (cached) return cached;
 
-  const url = process.env.SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const url = process.env.SUPABASE_URL?.replace(/\/$/, "");
+  const serviceKey =
+    process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SECRET_KEY;
 
   if (!url || !serviceKey) {
     throw new Error(
@@ -23,7 +24,10 @@ export function getSupabase(): SupabaseClient {
 }
 
 export function isSupabaseConfigured(): boolean {
-  return Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
+  return Boolean(
+    process.env.SUPABASE_URL &&
+      (process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SECRET_KEY),
+  );
 }
 
 export async function getCallSettings(): Promise<CallSettings> {

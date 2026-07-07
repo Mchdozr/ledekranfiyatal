@@ -7,6 +7,23 @@ import type { QuoteRequest } from "@/lib/db-types";
 
 export const runtime = "nodejs";
 
+function mapSupabaseInsertError(error: { code?: string; message?: string } | null) {
+  const code = error?.code ?? "";
+  const msg = error?.message ?? "";
+
+  if (
+    code === "PGRST301" ||
+    msg.includes("Invalid API key") ||
+    msg.includes("JWT")
+  ) {
+    return "Supabase API anahtarı geçersiz. Vercel'de service_role (secret) key kullanın.";
+  }
+  if (code === "42P01" || msg.includes("does not exist")) {
+    return "Veritabanı tabloları bulunamadı. Supabase SQL migration çalıştırın.";
+  }
+  return "Talep kaydedilemedi";
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -64,7 +81,8 @@ export async function POST(request: Request) {
 
     if (error || !inserted) {
       console.error("[quote] kayıt hatası:", error);
-      return NextResponse.json({ ok: false, error: "Talep kaydedilemedi" }, { status: 500 });
+      const message = mapSupabaseInsertError(error);
+      return NextResponse.json({ ok: false, error: message }, { status: 500 });
     }
 
     // Yalnızca CALL_MODE=phone iken otomatik telefon araması (test modunda arama yapılmaz).
