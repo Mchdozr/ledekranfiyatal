@@ -13,7 +13,13 @@ type RetellCall = {
   recording_url?: string;
   start_timestamp?: number;
   end_timestamp?: number;
-  metadata?: { session_id?: string; request_id?: string; supplier_id?: string };
+  metadata?: {
+    session_id?: string;
+    request_id?: string;
+    supplier_id?: string;
+    mode?: string;
+    test_call_id?: string;
+  };
   call_analysis?: {
     call_summary?: string;
     custom_analysis_data?: Record<string, unknown>;
@@ -111,6 +117,8 @@ export async function POST(request: Request) {
 
   const supabase = getSupabase();
   const sessionId = call.metadata?.session_id;
+  const testCallId = call.metadata?.test_call_id;
+  const isTest = call.metadata?.mode === "phone_test" || Boolean(testCallId);
 
   const update: Record<string, unknown> = {};
 
@@ -150,6 +158,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true, ignored: payload.event });
   }
 
+  // "Beni Ara" test aramaları ayrı test_calls tablosuna yazılır.
+  if (isTest) {
+    const testQuery = supabase.from("test_calls").update(update);
+    const { error } = testCallId
+      ? await testQuery.eq("id", testCallId)
+      : await testQuery.eq("retell_call_id", call.call_id ?? "");
+    if (error) {
+      console.error("[retell-webhook] test_calls güncelleme hatası:", error);
+      return NextResponse.json({ ok: false }, { status: 500 });
+    }
+    return NextResponse.json({ ok: true, test: true });
+  }
+
   const query = supabase.from("call_sessions").update(update);
   const { error } = sessionId
     ? await query.eq("id", sessionId)
@@ -161,7 +182,11 @@ export async function POST(request: Request) {
   }
 
   // İlgili talebin tüm çağrıları bittiyse status=completed yap.
-  if (payload.event === "call_analyzed" && call.metadata?.request_id) {
+  // call_analyzed gelmese bile call_ended sonrası takılı kalmayı önle.
+  if (
+    (payload.event === "call_analyzed" || payload.event === "call_ended") &&
+    call.metadata?.request_id
+  ) {
     await maybeCompleteRequest(call.metadata.request_id);
   }
 
