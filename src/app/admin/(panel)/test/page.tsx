@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { getSupabase, isSupabaseConfigured } from "@/lib/supabase";
-import { getCallMode, callModeLabel, canWebTest } from "@/lib/call-mode";
+import { getCallMode, callModeLabel, canWebTest, canPhoneTest } from "@/lib/call-mode";
 import type { QuoteRequest } from "@/lib/db-types";
 import { VoiceTestClient } from "./VoiceTestClient";
+import { PhoneTestClient } from "./PhoneTestClient";
 import { MockSimulateButton } from "./MockSimulateButton";
 import { Info, ExternalLink } from "lucide-react";
 
@@ -11,6 +12,7 @@ export const dynamic = "force-dynamic";
 export default async function TestPage() {
   const mode = getCallMode();
   const webOk = canWebTest();
+  const phoneOk = canPhoneTest();
 
   let recentRequests: QuoteRequest[] = [];
   if (isSupabaseConfigured()) {
@@ -42,6 +44,8 @@ export default async function TestPage() {
           </p>
         </div>
       </div>
+
+      <PhoneTestClient canPhoneTest={phoneOk} />
 
       <VoiceTestClient canWebTest={webOk} />
 
@@ -84,7 +88,13 @@ export default async function TestPage() {
             <code className="text-cyan-bright">RETELL_AGENT_ID</code>
           </li>
           <li>Buradan mikrofonla test et (ücretsiz kredi)</li>
-          <li>Memnun kalınca Twilio numarası ekle → <code>CALL_MODE=phone</code></li>
+          <li>
+            Twilio numarası ekle → <code>RETELL_FROM_NUMBER</code> +{" "}
+            <code>CALL_MODE=phone</code> → yukarıdan <strong>Beni Ara</strong> ile kendini test et
+          </li>
+          <li>
+            Ayrıntılı ücretsiz kurulum: <code className="text-cyan-bright">docs/CANLI-KURULUM.md</code>
+          </li>
         </ol>
         <a
           href="https://docs.retellai.com/deploy/web-call"
