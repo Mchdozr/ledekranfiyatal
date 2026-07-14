@@ -70,6 +70,29 @@ export type CallSession = {
   created_at: string;
 };
 
+export type TestCall = {
+  id: string;
+  to_number: string;
+  scenario_id: string | null;
+  retell_call_id: string | null;
+  status: CallStatus;
+  price: number | null;
+  currency: string | null;
+  price_unit: PriceUnit | null;
+  lead_time_days: number | null;
+  warranty_years: number | null;
+  includes_installation: boolean | null;
+  is_reachable: boolean | null;
+  summary: string | null;
+  transcript: string | null;
+  recording_url: string | null;
+  raw_analysis: Record<string, unknown> | null;
+  error: string | null;
+  started_at: string | null;
+  ended_at: string | null;
+  created_at: string;
+};
+
 export type CallSettings = {
   recordingEnabled: boolean;
   disclosureEnabled: boolean;
