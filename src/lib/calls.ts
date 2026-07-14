@@ -98,6 +98,20 @@ async function disclosureText(): Promise<string> {
     : "";
 }
 
+/**
+ * recordingEnabled ayarını Retell'e per-call iletir.
+ * Kapalıysa "basic_attributes_only" ile kayıt/transkript saklanmaz.
+ */
+function agentOverrideFromSettings(recordingEnabled: boolean) {
+  return {
+    agent: {
+      data_storage_setting: recordingEnabled
+        ? ("everything" as const)
+        : ("basic_attributes_only" as const),
+    },
+  };
+}
+
 /** Talebe uygun, aktif tedarikçileri öncelik sırasına göre döndürür. */
 export async function matchSuppliers(req: QuoteRequest): Promise<Supplier[]> {
   const settings = await getCallSettings();
@@ -202,6 +216,66 @@ export async function startWebTestCall(scenario: TestScenario): Promise<{
 }
 
 /**
+ * "Beni Ara" testi: girilen numaraya gerçek Retell telefon araması yapar.
+ * Sonuç webhook üzerinden test_calls tablosuna yazılır. Tedarikçi akışından bağımsızdır.
+ */
+export async function startPhoneTestCall(
+  toNumber: string,
+  scenario: TestScenario,
+): Promise<{ testCallId: string; callId: string }> {
+  const fromNumber = process.env.RETELL_FROM_NUMBER;
+  const agentId = process.env.RETELL_AGENT_ID;
+  if (!fromNumber || !agentId) {
+    throw new Error("RETELL_FROM_NUMBER ve RETELL_AGENT_ID tanımlı olmalı.");
+  }
+
+  const supabase = getSupabase();
+  const settings = await getCallSettings();
+  const disclosure = settings.disclosureEnabled
+    ? "Görüşme başında kısaca kendini tanıt: ledekranfiyatal.com adına fiyat araştırması yaptığını ve görüşmenin kalite amacıyla kaydedilebileceğini belirt."
+    : "";
+
+  const { data: row, error: insertErr } = await supabase
+    .from("test_calls")
+    .insert({ to_number: toNumber, scenario_id: scenario.id, status: "queued" })
+    .select("id")
+    .single();
+
+  if (insertErr || !row) {
+    throw insertErr ?? new Error("Test kaydı oluşturulamadı.");
+  }
+
+  const testCallId = row.id as string;
+
+  try {
+    const call = await getRetell().call.createPhoneCall({
+      from_number: fromNumber,
+      to_number: toNumber,
+      override_agent_id: agentId,
+      agent_override: agentOverrideFromSettings(settings.recordingEnabled),
+      metadata: { mode: "phone_test", test_call_id: testCallId },
+      retell_llm_dynamic_variables: varsFromScenario(scenario, disclosure),
+    });
+
+    await supabase
+      .from("test_calls")
+      .update({ retell_call_id: call.call_id, status: "ringing" })
+      .eq("id", testCallId);
+
+    return { testCallId, callId: call.call_id };
+  } catch (err) {
+    await supabase
+      .from("test_calls")
+      .update({
+        status: "failed",
+        error: err instanceof Error ? err.message : "Çağrı başlatılamadı",
+      })
+      .eq("id", testCallId);
+    throw err;
+  }
+}
+
+/**
  * Canlı telefon: talep için eşleşen tedarikçileri eş zamanlı arar.
  * Yalnızca CALL_MODE=phone iken formdan otomatik çağrılır.
  */
@@ -210,8 +284,12 @@ export async function triggerCallsForRequest(req: QuoteRequest): Promise<{
   failed: number;
 }> {
   const supabase = getSupabase();
+  const settings = await getCallSettings();
   const disclosure = await disclosureText();
-  const suppliers = await matchSuppliers(req);
+  const matched = await matchSuppliers(req);
+
+  // Canlı aramada demo/[TEST] tedarikçileri asla arama (yanlışlıkla sahte numara aranmasın).
+  const suppliers = matched.filter((s) => !DEMO_SUPPLIER_IDS.includes(s.id));
 
   if (suppliers.length === 0) {
     return { triggered: 0, failed: 0 };
@@ -222,6 +300,9 @@ export async function triggerCallsForRequest(req: QuoteRequest): Promise<{
   if (!fromNumber || !agentId) {
     throw new Error("RETELL_FROM_NUMBER ve RETELL_AGENT_ID tanımlı olmalı.");
   }
+
+  // Yeniden aramada eski oturumları temizle (duplike çağrı ve unique index çakışması engeli).
+  await supabase.from("call_sessions").delete().eq("request_id", req.id);
 
   const { data: sessions, error: insertErr } = await supabase
     .from("call_sessions")
@@ -249,6 +330,7 @@ export async function triggerCallsForRequest(req: QuoteRequest): Promise<{
           from_number: fromNumber,
           to_number: supplier.phone,
           override_agent_id: agentId,
+          agent_override: agentOverrideFromSettings(settings.recordingEnabled),
           metadata: { request_id: req.id, supplier_id: supplier.id, session_id: sessionId },
           retell_llm_dynamic_variables: varsFromQuote(req, supplier, disclosure),
         });

@@ -30,3 +30,12 @@ export function shouldAutoCallOnQuote(): boolean {
 export function canWebTest(): boolean {
   return Boolean(process.env.RETELL_API_KEY && process.env.RETELL_AGENT_ID);
 }
+
+/** "Beni Ara" testi için Retell + telefon hattı gerekir. */
+export function canPhoneTest(): boolean {
+  return Boolean(
+    process.env.RETELL_API_KEY &&
+      process.env.RETELL_AGENT_ID &&
+      process.env.RETELL_FROM_NUMBER,
+  );
+}
