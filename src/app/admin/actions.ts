@@ -11,6 +11,7 @@ import {
 import { getSupabase } from "@/lib/supabase";
 import { getCallMode } from "@/lib/call-mode";
 import { simulateMockCalls, triggerCallsForRequest } from "@/lib/calls";
+import { normalizePhone } from "@/lib/phone";
 import type { QuoteRequest } from "@/lib/db-types";
 
 export async function loginAction(formData: FormData) {
@@ -48,9 +49,10 @@ function parseList(value: FormDataEntryValue | null): string[] {
 
 export async function createSupplier(formData: FormData) {
   const supabase = getSupabase();
+  const rawPhone = String(formData.get("phone") ?? "").trim();
   await supabase.from("suppliers").insert({
     name: String(formData.get("name") ?? "").trim(),
-    phone: String(formData.get("phone") ?? "").trim(),
+    phone: normalizePhone(rawPhone) ?? rawPhone,
     city: String(formData.get("city") ?? "").trim() || null,
     usage_types: parseList(formData.get("usage_types")),
     product_types: parseList(formData.get("product_types")),
@@ -64,11 +66,12 @@ export async function createSupplier(formData: FormData) {
 export async function updateSupplier(formData: FormData) {
   const supabase = getSupabase();
   const id = String(formData.get("id"));
+  const rawPhone = String(formData.get("phone") ?? "").trim();
   await supabase
     .from("suppliers")
     .update({
       name: String(formData.get("name") ?? "").trim(),
-      phone: String(formData.get("phone") ?? "").trim(),
+      phone: normalizePhone(rawPhone) ?? rawPhone,
       city: String(formData.get("city") ?? "").trim() || null,
       usage_types: parseList(formData.get("usage_types")),
       product_types: parseList(formData.get("product_types")),
